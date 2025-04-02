@@ -34,6 +34,17 @@ const authenticateUser = (req, res, next) => {
 
 // Routes
 
+// Debug route to see all users (only for development)
+app.get('/api/debug/users', (req, res) => {
+    // Send a safe version of users (without passwords)
+    const safeUsers = users.map(user => ({
+        id: user.id,
+        email: user.email,
+        isOwner: user.isOwner
+    }));
+    res.json(safeUsers);
+});
+
 // Register new user
 app.post('/api/register', (req, res) => {
     console.log('Registration attempt:', req.body.email);
