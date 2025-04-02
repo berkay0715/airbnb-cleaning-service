@@ -199,18 +199,31 @@
 
         <!-- Login Section -->
         <section id="login" class="content-section" style="display: none;">
-            <h2>Login</h2>
-            <form id="loginForm" class="mt-4">
-                <div class="mb-3">
-                    <label for="loginEmail" class="form-label">Email</label>
-                    <input type="email" class="form-control" id="loginEmail" required>
+            <div class="row justify-content-center">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-body">
+                            <h2 class="text-center mb-4">Login</h2>
+                            <form id="loginForm">
+                                <div class="mb-3">
+                                    <label for="loginEmail" class="form-label">Email</label>
+                                    <input type="email" class="form-control" id="loginEmail" name="loginEmail" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="loginPassword" class="form-label">Password</label>
+                                    <input type="password" class="form-control" id="loginPassword" name="loginPassword" required autocomplete="current-password">
+                                </div>
+                                <div class="d-grid">
+                                    <button type="submit" class="btn btn-primary">Login</button>
+                                </div>
+                                <div class="text-center mt-3">
+                                    <p>Don't have an account? <a href="#" onclick="showSection('register')">Register here</a></p>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
                 </div>
-                <div class="mb-3">
-                    <label for="loginPassword" class="form-label">Password</label>
-                    <input type="password" class="form-control" id="loginPassword" required>
-                </div>
-                <button type="submit" class="btn btn-primary">Login</button>
-            </form>
+            </div>
         </section>
 
         <!-- Register Section -->

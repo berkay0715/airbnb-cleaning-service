@@ -5,6 +5,12 @@ const API_URL = 'http://localhost:5000/api';
 let userToken = localStorage.getItem('token');
 let isOwner = localStorage.getItem('isOwner') === 'true';
 
+// Initialize the page
+document.addEventListener('DOMContentLoaded', () => {
+    updateNavigation();
+    showSection('home');
+});
+
 // Show/hide sections based on authentication
 function updateNavigation() {
     const authNav = document.getElementById('authNav');
@@ -35,18 +41,48 @@ function showSection(sectionId) {
         section.style.display = 'block';
     }
     
+    // Reset forms when switching sections
+    document.querySelectorAll('form').forEach(form => form.reset());
+    
     // Load bookings if showing dashboard
     if (sectionId === 'dashboard' && isOwner) {
         loadBookings();
     }
 }
 
+// Show error message in form
+function showFormError(formId, message) {
+    const form = document.getElementById(formId);
+    let errorDiv = form.querySelector('.alert');
+    if (!errorDiv) {
+        errorDiv = document.createElement('div');
+        errorDiv.className = 'alert alert-danger mt-3';
+        form.insertBefore(errorDiv, form.firstChild);
+    }
+    errorDiv.textContent = message;
+}
+
+// Clear form error
+function clearFormError(formId) {
+    const form = document.getElementById(formId);
+    const errorDiv = form.querySelector('.alert');
+    if (errorDiv) {
+        errorDiv.remove();
+    }
+}
+
 // Register new user
 document.getElementById('registerForm').addEventListener('submit', async (e) => {
     e.preventDefault();
+    clearFormError('registerForm');
     
     const email = document.getElementById('registerEmail').value;
     const password = document.getElementById('registerPassword').value;
+    
+    if (!email || !password) {
+        showFormError('registerForm', 'Please fill in all fields');
+        return;
+    }
     
     try {
         const response = await fetch(`${API_URL}/register`, {
@@ -63,20 +99,26 @@ document.getElementById('registerForm').addEventListener('submit', async (e) => 
             alert('Registration successful! Please login.');
             showSection('login');
         } else {
-            alert(data.message || 'Registration failed');
+            showFormError('registerForm', data.message || 'Registration failed. Please try again.');
         }
     } catch (error) {
-        alert('Error during registration');
-        console.error(error);
+        console.error('Registration error:', error);
+        showFormError('registerForm', 'Unable to connect to the server. Please try again later.');
     }
 });
 
 // Login user
 document.getElementById('loginForm').addEventListener('submit', async (e) => {
     e.preventDefault();
+    clearFormError('loginForm');
     
     const email = document.getElementById('loginEmail').value;
     const password = document.getElementById('loginPassword').value;
+    
+    if (!email || !password) {
+        showFormError('loginForm', 'Please fill in all fields');
+        return;
+    }
     
     try {
         const response = await fetch(`${API_URL}/login`, {
@@ -97,11 +139,11 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
             updateNavigation();
             showSection(isOwner ? 'dashboard' : 'home');
         } else {
-            alert(data.message || 'Login failed');
+            showFormError('loginForm', data.message || 'Login failed. Please check your credentials.');
         }
     } catch (error) {
-        alert('Error during login');
-        console.error(error);
+        console.error('Login error:', error);
+        showFormError('loginForm', 'Unable to connect to the server. Please try again later.');
     }
 });
 
@@ -229,8 +271,4 @@ document.head.insertAdjacentHTML('beforeend', `
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
     </style>
-`);
-
-// Initialize navigation on page load
-updateNavigation();
-showSection('home'); 
+`); 

@@ -7,6 +7,12 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Add logging middleware
+app.use((req, res, next) => {
+    console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
+    next();
+});
+
 // In-memory storage (for demonstration - would use a database in production)
 let users = [];
 let bookings = [];
@@ -30,6 +36,7 @@ const authenticateUser = (req, res, next) => {
 
 // Register new user
 app.post('/api/register', (req, res) => {
+    console.log('Registration attempt:', req.body.email);
     const { email, password } = req.body;
     
     if (users.find(u => u.email === email)) {
@@ -45,18 +52,22 @@ app.post('/api/register', (req, res) => {
     };
     
     users.push(user);
+    console.log('User registered successfully:', email);
     res.json({ token: user.token });
 });
 
 // Login
 app.post('/api/login', (req, res) => {
+    console.log('Login attempt:', req.body.email);
     const { email, password } = req.body;
     const user = users.find(u => u.email === email && u.password === password);
     
     if (!user) {
+        console.log('Login failed for:', email);
         return res.status(401).json({ message: 'Invalid credentials' });
     }
     
+    console.log('Login successful for:', email);
     res.json({ 
         token: user.token,
         isOwner: user.isOwner 
@@ -93,7 +104,10 @@ app.get('/api/my-bookings', authenticateUser, (req, res) => {
 // Start server
 const PORT = 5000;
 app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+    console.log('='.repeat(50));
+    console.log(`Server started at ${new Date().toISOString()}`);
+    console.log(`Server is running on http://localhost:${PORT}`);
+    console.log('='.repeat(50));
     
     // Create default owner account
     if (!users.find(u => u.email === 'owner@example.com')) {
@@ -104,5 +118,6 @@ app.listen(PORT, () => {
             token: 'owner-token',
             isOwner: true
         });
+        console.log('Default owner account created');
     }
 }); 
