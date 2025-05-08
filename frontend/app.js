@@ -18,7 +18,7 @@ function updateNavigation() {
         ? `
             ${isOwner 
                 ? '<li class="nav-item"><a class="nav-link" href="#" onclick="showSection(\'dashboard\')">Dashboard</a></li>'
-                : ''
+                : '<li class="nav-item"><a class="nav-link" href="#" onclick="showSection(\'my-bookings\')">My Bookings</a></li>'
             }
             <li class="nav-item"><a class="nav-link" href="#" onclick="logout()">Logout</a></li>
           `
@@ -44,9 +44,11 @@ function showSection(sectionId) {
     // Reset forms when switching sections
     document.querySelectorAll('form').forEach(form => form.reset());
     
-    // Load bookings if showing dashboard
+    // Load appropriate data
     if (sectionId === 'dashboard' && isOwner) {
         loadBookings();
+    } else if (sectionId === 'my-bookings' && !isOwner) {
+        loadMyBookings();
     }
 }
 
@@ -227,6 +229,8 @@ async function loadBookings() {
                                 <th>Phone</th>
                                 <th>Address</th>
                                 <th>Service</th>
+                                <th>Status</th>
+                                <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -238,6 +242,21 @@ async function loadBookings() {
                                     <td>${booking.phone}</td>
                                     <td>${booking.address}</td>
                                     <td>${booking.service}</td>
+                                    <td>
+                                        <span class="badge bg-${getStatusColor(booking.status)}">
+                                            ${booking.status}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        ${booking.status === 'pending' ? `
+                                            <button class="btn btn-sm btn-success me-2" onclick="updateBookingStatus(${booking.id}, 'accepted')">
+                                                Accept
+                                            </button>
+                                            <button class="btn btn-sm btn-danger" onclick="updateBookingStatus(${booking.id}, 'declined')">
+                                                Decline
+                                            </button>
+                                        ` : ''}
+                                    </td>
                                 </tr>
                             `).join('')}
                         </tbody>
@@ -248,8 +267,166 @@ async function loadBookings() {
             alert('Failed to load bookings');
         }
     } catch (error) {
+        console.error('Error loading bookings:', error);
         alert('Error loading bookings');
-        console.error(error);
+    }
+}
+
+// Load user's bookings
+async function loadMyBookings() {
+    if (!userToken) return;
+    
+    try {
+        const response = await fetch(`${API_URL}/my-bookings`, {
+            headers: {
+                'Authorization': userToken
+            }
+        });
+        
+        const bookings = await response.json();
+        
+        if (response.ok) {
+            const myBookingsList = document.getElementById('myBookingsList');
+            myBookingsList.innerHTML = bookings.length
+                ? `
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Service</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${bookings.map(booking => `
+                                <tr>
+                                    <td>${new Date(booking.date).toLocaleString()}</td>
+                                    <td>${booking.service}</td>
+                                    <td>
+                                        <span class="badge bg-${getStatusColor(booking.status)}">
+                                            ${booking.status}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        ${booking.status !== 'declined' ? `
+                                            <button class="btn btn-sm btn-primary" onclick="showRescheduleModal(${booking.id})">
+                                                Reschedule
+                                            </button>
+                                        ` : ''}
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                `
+                : '<p>No bookings found</p>';
+        } else {
+            alert('Failed to load bookings');
+        }
+    } catch (error) {
+        console.error('Error loading bookings:', error);
+        alert('Error loading bookings');
+    }
+}
+
+// Update booking status (owner only)
+async function updateBookingStatus(bookingId, status) {
+    try {
+        const response = await fetch(`${API_URL}/bookings/${bookingId}/status`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': userToken
+            },
+            body: JSON.stringify({ status })
+        });
+        
+        if (response.ok) {
+            loadBookings();
+        } else {
+            const data = await response.json();
+            alert(data.message || 'Failed to update booking status');
+        }
+    } catch (error) {
+        console.error('Error updating booking status:', error);
+        alert('Error updating booking status');
+    }
+}
+
+// Show reschedule modal
+function showRescheduleModal(bookingId) {
+    const modal = document.createElement('div');
+    modal.className = 'modal fade';
+    modal.innerHTML = `
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Reschedule Booking</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="rescheduleForm">
+                        <div class="mb-3">
+                            <label for="newDate" class="form-label">New Date</label>
+                            <input type="datetime-local" class="form-control" id="newDate" required>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="rescheduleBooking(${bookingId})">Reschedule</button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    const modalInstance = new bootstrap.Modal(modal);
+    modalInstance.show();
+    
+    modal.addEventListener('hidden.bs.modal', () => {
+        modal.remove();
+    });
+}
+
+// Reschedule booking
+async function rescheduleBooking(bookingId) {
+    const newDate = document.getElementById('newDate').value;
+    
+    try {
+        const response = await fetch(`${API_URL}/bookings/${bookingId}/reschedule`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': userToken
+            },
+            body: JSON.stringify({ date: newDate })
+        });
+        
+        if (response.ok) {
+            const modal = document.querySelector('.modal');
+            const modalInstance = bootstrap.Modal.getInstance(modal);
+            modalInstance.hide();
+            loadMyBookings();
+        } else {
+            const data = await response.json();
+            alert(data.message || 'Failed to reschedule booking');
+        }
+    } catch (error) {
+        console.error('Error rescheduling booking:', error);
+        alert('Error rescheduling booking');
+    }
+}
+
+// Helper function to get status color
+function getStatusColor(status) {
+    switch (status) {
+        case 'pending': return 'warning';
+        case 'accepted': return 'success';
+        case 'declined': return 'danger';
+        case 'rescheduled': return 'info';
+        default: return 'secondary';
     }
 }
 

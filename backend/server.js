@@ -17,13 +17,20 @@ app.use((req, res, next) => {
 let users = [];
 let bookings = [];
 
+// Helper function to validate date
+function isValidDate(dateString) {
+    const date = new Date(dateString);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return date >= today;
+}
+
 // Authentication middleware
 const authenticateUser = (req, res, next) => {
     const token = req.headers.authorization;
     if (!token) {
         return res.status(401).json({ message: 'No token provided' });
     }
-    // Simple token validation (would use JWT in production)
     const user = users.find(u => u.token === token);
     if (!user) {
         return res.status(401).json({ message: 'Invalid token' });
@@ -87,10 +94,18 @@ app.post('/api/login', (req, res) => {
 
 // Create a booking
 app.post('/api/bookings', authenticateUser, (req, res) => {
+    const { date } = req.body;
+    
+    // Validate date
+    if (!isValidDate(date)) {
+        return res.status(400).json({ message: 'Cannot book a date in the past' });
+    }
+    
     const booking = {
         id: bookings.length + 1,
         userId: req.user.id,
         ...req.body,
+        status: 'pending', // pending, accepted, declined, rescheduled
         createdAt: new Date()
     };
     
@@ -110,6 +125,52 @@ app.get('/api/bookings', authenticateUser, (req, res) => {
 app.get('/api/my-bookings', authenticateUser, (req, res) => {
     const userBookings = bookings.filter(b => b.userId === req.user.id);
     res.json(userBookings);
+});
+
+// Update booking status (owner only)
+app.put('/api/bookings/:id/status', authenticateUser, (req, res) => {
+    if (!req.user.isOwner) {
+        return res.status(403).json({ message: 'Access denied' });
+    }
+    
+    const { id } = req.params;
+    const { status } = req.body;
+    
+    const booking = bookings.find(b => b.id === parseInt(id));
+    if (!booking) {
+        return res.status(404).json({ message: 'Booking not found' });
+    }
+    
+    if (!['accepted', 'declined'].includes(status)) {
+        return res.status(400).json({ message: 'Invalid status' });
+    }
+    
+    booking.status = status;
+    res.json(booking);
+});
+
+// Reschedule booking
+app.put('/api/bookings/:id/reschedule', authenticateUser, (req, res) => {
+    const { id } = req.params;
+    const { date } = req.body;
+    
+    // Validate date
+    if (!isValidDate(date)) {
+        return res.status(400).json({ message: 'Cannot reschedule to a date in the past' });
+    }
+    
+    const booking = bookings.find(b => b.id === parseInt(id));
+    if (!booking) {
+        return res.status(404).json({ message: 'Booking not found' });
+    }
+    
+    if (booking.userId !== req.user.id) {
+        return res.status(403).json({ message: 'Access denied' });
+    }
+    
+    booking.date = date;
+    booking.status = 'rescheduled';
+    res.json(booking);
 });
 
 // Start server
