@@ -9,6 +9,7 @@ let isOwner = localStorage.getItem('isOwner') === 'true';
 document.addEventListener('DOMContentLoaded', () => {
     updateNavigation();
     showSection('home');
+    loadServicePrices();
 });
 
 // Show/hide sections based on authentication
@@ -203,6 +204,27 @@ document.getElementById('bookingForm').addEventListener('submit', async (e) => {
     }
 });
 
+// Load service prices
+async function loadServicePrices() {
+    try {
+        const response = await fetch(`${API_URL}/services`);
+        const prices = await response.json();
+        
+        // Update service cards with prices
+        Object.entries(prices).forEach(([service, price]) => {
+            const card = document.querySelector(`.card-title:contains('${service}')`).closest('.card');
+            if (card) {
+                const priceElement = card.querySelector('.price');
+                if (priceElement) {
+                    priceElement.textContent = `Starting at ${price} SEK`;
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Error loading service prices:', error);
+    }
+}
+
 // Load bookings for owner dashboard
 async function loadBookings() {
     if (!isOwner || !userToken) return;
@@ -229,6 +251,7 @@ async function loadBookings() {
                                 <th>Phone</th>
                                 <th>Address</th>
                                 <th>Service</th>
+                                <th>Price</th>
                                 <th>Status</th>
                                 <th>Actions</th>
                             </tr>
@@ -242,13 +265,14 @@ async function loadBookings() {
                                     <td>${booking.phone}</td>
                                     <td>${booking.address}</td>
                                     <td>${booking.service}</td>
+                                    <td>${booking.price} SEK</td>
                                     <td>
                                         <span class="badge bg-${getStatusColor(booking.status)}">
-                                            ${booking.status}
+                                            ${booking.status.replace('_', ' ')}
                                         </span>
                                     </td>
                                     <td>
-                                        ${booking.status === 'pending' ? `
+                                        ${(booking.status === 'pending' || booking.status === 'rescheduled') ? `
                                             <button class="btn btn-sm btn-success me-2" onclick="updateBookingStatus(${booking.id}, 'accepted')">
                                                 Accept
                                             </button>
@@ -294,6 +318,7 @@ async function loadMyBookings() {
                             <tr>
                                 <th>Date</th>
                                 <th>Service</th>
+                                <th>Price</th>
                                 <th>Status</th>
                                 <th>Actions</th>
                             </tr>
@@ -303,13 +328,14 @@ async function loadMyBookings() {
                                 <tr>
                                     <td>${new Date(booking.date).toLocaleString()}</td>
                                     <td>${booking.service}</td>
+                                    <td>${booking.price} SEK</td>
                                     <td>
                                         <span class="badge bg-${getStatusColor(booking.status)}">
-                                            ${booking.status}
+                                            ${booking.status.replace('_', ' ')}
                                         </span>
                                     </td>
                                     <td>
-                                        ${booking.status !== 'declined' ? `
+                                        ${booking.status !== 'declined' && booking.status !== 'rescheduled_declined' ? `
                                             <button class="btn btn-sm btn-primary" onclick="showRescheduleModal(${booking.id})">
                                                 Reschedule
                                             </button>
@@ -426,6 +452,8 @@ function getStatusColor(status) {
         case 'accepted': return 'success';
         case 'declined': return 'danger';
         case 'rescheduled': return 'info';
+        case 'rescheduled_accepted': return 'success';
+        case 'rescheduled_declined': return 'danger';
         default: return 'secondary';
     }
 }

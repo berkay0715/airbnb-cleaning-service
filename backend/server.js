@@ -13,6 +13,13 @@ app.use((req, res, next) => {
     next();
 });
 
+// Service prices
+const SERVICE_PRICES = {
+    'Standard Cleaning': 500,
+    'Deep Cleaning': 800,
+    'Premium Cleaning': 1200
+};
+
 // In-memory storage (for demonstration - would use a database in production)
 let users = [];
 let bookings = [];
@@ -92,20 +99,31 @@ app.post('/api/login', (req, res) => {
     });
 });
 
+// Get service prices
+app.get('/api/services', (req, res) => {
+    res.json(SERVICE_PRICES);
+});
+
 // Create a booking
 app.post('/api/bookings', authenticateUser, (req, res) => {
-    const { date } = req.body;
+    const { date, service } = req.body;
     
     // Validate date
     if (!isValidDate(date)) {
         return res.status(400).json({ message: 'Cannot book a date in the past' });
     }
     
+    // Validate service and get price
+    if (!SERVICE_PRICES[service]) {
+        return res.status(400).json({ message: 'Invalid service selected' });
+    }
+    
     const booking = {
         id: bookings.length + 1,
         userId: req.user.id,
         ...req.body,
-        status: 'pending', // pending, accepted, declined, rescheduled
+        price: SERVICE_PRICES[service],
+        status: 'pending',
         createdAt: new Date()
     };
     
@@ -141,11 +159,21 @@ app.put('/api/bookings/:id/status', authenticateUser, (req, res) => {
         return res.status(404).json({ message: 'Booking not found' });
     }
     
-    if (!['accepted', 'declined'].includes(status)) {
+    if (!['accepted', 'declined', 'rescheduled_accepted', 'rescheduled_declined'].includes(status)) {
         return res.status(400).json({ message: 'Invalid status' });
     }
     
-    booking.status = status;
+    // If the booking was rescheduled, update the status accordingly
+    if (booking.status === 'rescheduled') {
+        if (status === 'accepted') {
+            booking.status = 'rescheduled_accepted';
+        } else if (status === 'declined') {
+            booking.status = 'rescheduled_declined';
+        }
+    } else {
+        booking.status = status;
+    }
+    
     res.json(booking);
 });
 
