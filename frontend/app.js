@@ -1,18 +1,18 @@
-// API URL
+// Where our website talks to the server
 const API_URL = 'http://localhost:5000/api';
 
-// Store user token
+// Remember if the user is logged in
 let userToken = localStorage.getItem('token');
 let isOwner = localStorage.getItem('isOwner') === 'true';
 
-// Initialize the page
+// When the page loads, set up everything
 document.addEventListener('DOMContentLoaded', () => {
     updateNavigation();
     showSection('home');
     loadServicePrices();
 });
 
-// Show/hide sections based on authentication
+// Update the top menu based on if someone is logged in
 function updateNavigation() {
     const authNav = document.getElementById('authNav');
     authNav.innerHTML = userToken
@@ -29,23 +29,23 @@ function updateNavigation() {
           `;
 }
 
-// Show selected section and hide others
+// Show one section and hide the others
 function showSection(sectionId) {
-    // Hide all sections
+    // Hide everything first
     document.querySelectorAll('.content-section').forEach(section => {
         section.style.display = 'none';
     });
     
-    // Show selected section
+    // Show the section we want
     const section = document.getElementById(sectionId);
     if (section) {
         section.style.display = 'block';
     }
     
-    // Reset forms when switching sections
+    // Clear all forms when switching sections
     document.querySelectorAll('form').forEach(form => form.reset());
     
-    // Load appropriate data
+    // Load the right data for each section
     if (sectionId === 'dashboard' && isOwner) {
         loadBookings();
     } else if (sectionId === 'my-bookings' && !isOwner) {
@@ -53,7 +53,7 @@ function showSection(sectionId) {
     }
 }
 
-// Show error message in form
+// Show error messages in forms
 function showFormError(formId, message) {
     const form = document.getElementById(formId);
     let errorDiv = form.querySelector('.alert');
@@ -65,7 +65,7 @@ function showFormError(formId, message) {
     errorDiv.textContent = message;
 }
 
-// Clear form error
+// Clear error messages from forms
 function clearFormError(formId) {
     const form = document.getElementById(formId);
     const errorDiv = form.querySelector('.alert');
@@ -74,7 +74,7 @@ function clearFormError(formId) {
     }
 }
 
-// Register new user
+// Handle new user registration
 document.getElementById('registerForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     clearFormError('registerForm');
@@ -110,7 +110,7 @@ document.getElementById('registerForm').addEventListener('submit', async (e) => 
     }
 });
 
-// Login user
+// Handle user login
 document.getElementById('loginForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     clearFormError('loginForm');
@@ -150,7 +150,7 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
     }
 });
 
-// Logout user
+// Handle user logout
 function logout() {
     userToken = null;
     isOwner = false;
@@ -160,7 +160,7 @@ function logout() {
     showSection('home');
 }
 
-// Submit booking
+// Handle new booking submission
 document.getElementById('bookingForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     
@@ -204,13 +204,13 @@ document.getElementById('bookingForm').addEventListener('submit', async (e) => {
     }
 });
 
-// Load service prices
+// Load and display service prices
 async function loadServicePrices() {
     try {
         const response = await fetch(`${API_URL}/services`);
         const prices = await response.json();
         
-        // Update service cards with prices
+        // Update each service card with its price
         Object.entries(prices).forEach(([service, price]) => {
             const card = document.querySelector(`.card-title:contains('${service}')`).closest('.card');
             if (card) {
@@ -225,7 +225,7 @@ async function loadServicePrices() {
     }
 }
 
-// Load bookings for owner dashboard
+// Load all bookings for the owner
 async function loadBookings() {
     if (!isOwner || !userToken) return;
     
@@ -296,7 +296,7 @@ async function loadBookings() {
     }
 }
 
-// Load user's bookings
+// Load a user's own bookings
 async function loadMyBookings() {
     if (!userToken) return;
     
@@ -356,7 +356,7 @@ async function loadMyBookings() {
     }
 }
 
-// Update booking status (owner only)
+// Update booking status (accept/decline)
 async function updateBookingStatus(bookingId, status) {
     try {
         const response = await fetch(`${API_URL}/bookings/${bookingId}/status`, {
@@ -380,7 +380,7 @@ async function updateBookingStatus(bookingId, status) {
     }
 }
 
-// Show reschedule modal
+// Show the reschedule booking popup
 function showRescheduleModal(bookingId) {
     const modal = document.createElement('div');
     modal.className = 'modal fade';
@@ -416,7 +416,7 @@ function showRescheduleModal(bookingId) {
     });
 }
 
-// Reschedule booking
+// Handle booking rescheduling
 async function rescheduleBooking(bookingId) {
     const newDate = document.getElementById('newDate').value;
     
@@ -445,7 +445,7 @@ async function rescheduleBooking(bookingId) {
     }
 }
 
-// Helper function to get status color
+// Get the right color for each booking status
 function getStatusColor(status) {
     switch (status) {
         case 'pending': return 'warning';
@@ -458,7 +458,7 @@ function getStatusColor(status) {
     }
 }
 
-// Add some basic styles
+// Add some basic styles to make the website look better
 document.head.insertAdjacentHTML('beforeend', `
     <style>
         .content-section {
